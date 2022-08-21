@@ -186,7 +186,8 @@ def get_sample_trajectory(x0,x0_sample,xnom,unom,Q,Y,model,N,ix,iu,iw,delT,flag_
         xsam.append(xsam_)
         usam.append(usam_)
         wsam.append(wsam_)
-    return np.array(tsam),np.array(xsam),np.array(usam),np.array(wsam)
+    return tsam,xsam,usam,wsam
+    # return np.array(tsam),np.array(xsam),np.array(usam),np.array(wsam)
 
 def get_sample_eta_w(Q,zs_sample,zw_sample) :
     eta_sample = []

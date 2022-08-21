@@ -7,7 +7,7 @@ def print_np(x):
     print ("Type is %s" % (type(x)))
     print ("Shape is %s" % (x.shape,))
 #     print ("Values are: \n%s" % (x))
-from utils_alg import get_radius_angle
+from utils.utils_alg import get_radius_angle
 
 # def plot traj
 def plot_state_input(t,x,u,xi,xf,N,delT,alpha,plt,flag_step=False) :

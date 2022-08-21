@@ -11,7 +11,7 @@ def print_np(x):
     print ("Values are: \n%s" % (x))
 
 
-from constraints import OptimalcontrolConstraints
+from constraints.constraints import OptimalcontrolConstraints
 
 def get_obs_ab(c,H,x_bar) :
     tmp1 = 1 - np.linalg.norm(H@(x_bar[0:2]-c))

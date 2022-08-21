@@ -1,9 +1,3 @@
-
-# coding: utf-8
-
-# In[ ]:
-
-from __future__ import division
 import matplotlib.pyplot as plt
 import numpy as np
 import time
@@ -13,7 +7,7 @@ def print_np(x):
     print ("Shape is %s" % (x.shape,))
     # print ("Values are: \n%s" % (x))
 from scipy.integrate import solve_ivp
-from model import OptimalcontrolModel
+from model.model import OptimalcontrolModel
 
 class unicycle(OptimalcontrolModel):
     def __init__(self,name,ix,iu,iw,linearzation):
