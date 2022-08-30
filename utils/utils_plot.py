@@ -99,15 +99,21 @@ def plot_traj_set(x,u,c_list,H_list,Q,xi=None,xf=None,Qi=None,Qf=None,plt=plt,fl
     if flag_label == True :
         plt.plot(1e3,1e3,'--',color='tab:orange',label="nominal")
         plt.plot(1e3,1e3,'o',markersize=15,color='tab:blue',label="funnel") 
-        plt.plot(1e3,1e3,'o',markersize=15,color='tab:green',label="initial and final") 
+        plt.plot(1e3,1e3,'o',markersize=15,color='tab:green',label="initial and final ellipsoid") 
         # plt.plot(1e3,1e3,'o',markersize=15,color='tab:green',label="final") 
         plt.plot(1e3,1e3,'o',markersize=15,alpha=0.5,color='tab:red',label="obstacles") 
 
     plt.gca().set_aspect('equal', adjustable='box')
     plt.axis([-1.0, 6.0, -1.0, 6.0])
-    plt.xlabel('X (m)', fontsize = fS)
-    plt.ylabel('Y (m)', fontsize = fS)
+    plt.xlabel('$r_x$ (m)', fontsize = fS)
+    plt.ylabel('$r_y$ (m)', fontsize = fS)
     plt.legend(fontsize=fS)
+    ticks_font = "Times New Roman"
+    for label in ax.get_xticklabels():
+        label.set_fontproperties(ticks_font)
+
+    for label in ax.get_yticklabels():
+        label.set_fontproperties(ticks_font)
 
 
 # plot sample

@@ -137,8 +137,7 @@ class Lipschitz :
             xnew_prop = xprop[idx]
             for idx_s in range(num_sample) :
                 es,ws = eta_sample[idx_s],w_sample[idx_s] # samples on surface of ellipse
-                # temporary
-                ws *= 0
+                ws *= 0 # for additive noise case
 
                 xii = Kbar[idx]@es
 
@@ -188,8 +187,7 @@ class Lipschitz :
             xnew_prop = xprop[idx]
             for idx_s in range(num_sample) :
                 es,ws = eta_sample[idx_s],w_sample[idx_s] # samples on surface of ellipse
-                # temporary
-                ws *= 0
+                ws *= 0 # for additive noise case
 
                 xii = Kbar[idx]@es
 

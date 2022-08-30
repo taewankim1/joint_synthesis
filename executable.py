@@ -81,7 +81,7 @@ u0 = np.zeros((N+1,iu))
 
 A,B,s,z,x_prop_n = myModel.diff_discrete_zoh(x0[0:N,:],u0[0:N,:],delT,tf) 
 S = np.eye(ix)
-R = 2*np.eye(iu)
+R = np.eye(iu)
 K0 = get_K_discrete(A,B,S,R,S,N,ix,iu)
 Q0 = np.tile(np.diag([0.35**2,0.35**2,np.deg2rad(10)**2]),(N+1,1,1))
 Y0 = K0@Q0[:N]
@@ -135,7 +135,7 @@ for idx_iter in range(total_iter) :
 #     print("mean of gamma",np.mean(gamma,0),"max of gamma",np.max(gamma,0),"var of gamma",np.var(gamma,0))
 
     print("STEP 3 : Funnel update via SDP")
-    funl_solver = Q_update(ix,iu,iq,ip,iw,N,delT,myCost.S,myCost.R,w_tr=1e1)
+    funl_solver = Q_update(ix,iu,iq,ip,iw,N,delT,myCost.S,myCost.R,w_tr=1e-1)
     funl_solver.initialize(xnew,unew,e_prop*0,A,B,C,D,E,F,G)
     alpha = 0.99
     Qnew,Knew,Ynew,status,funl_cost = funl_solver.solve(alpha,gamma,Qini,Qf,Qhat,Yhat)
@@ -227,8 +227,10 @@ plt.plot(i_index,i_index*0+tol_traj,'--')
 plt.xlabel('iteration number',fontsize=fS,fontname='Times New Roman')
 plt.ylabel(r'$\Delta_T$',fontsize=fS,fontname='Times New Roman')
 plt.yscale('log')
+# plt.ylim([10**(-6), 10**(4)])
 plt.grid(True)
-# plt.xticks(i_index)
+plt.xticks(fontsize=15)
+plt.yticks(fontsize=15)
 # plt.legend(fontsize=fS)
 plt.subplot(122)
 plt.plot(i_index,funl_diff_list,'o-')
@@ -236,22 +238,16 @@ plt.plot(i_index,i_index*0+tol_funnel,'--',label="tolerance")
 plt.xlabel('iteration number',fontsize=fS,fontname='Times New Roman')
 plt.ylabel(r'$\Delta_F$',fontsize=fS,fontname='Times New Roman')
 plt.yscale('log')
-# plt.xticks(i_index)
+# plt.ylim([10**(-6), 10**(4)])
+plt.xticks(fontsize=15)
+plt.yticks(fontsize=15)
 plt.rcParams["font.family"] = "Times New Roman"
 plt.legend(fontsize=fS)
 plt.grid(True)
-# plt.show()
+plt.show()
 
 fS = 15
-plt.figure(figsize=(7,7))
-plot_traj_set(xbar,ubar,c_list,H_list,Qbar,xi=xi,xf=xf,Qi=Qini,Qf=Qf,plt=plt)
-plt.plot(xnom[:,0],xnom[:,1],'-.',color='tab:brown',label='traj w/o funnel')
-plt.legend(fontsize=fS)
-plt.rcParams["font.family"] = "Times New Roman"
-# plt.show()
-
-fS = 15
-plt.figure(figsize=(7,7))
+plt.figure(0,figsize=(7,7))
 for xsam_e in xsam :
     plt.plot(xsam_e[:,0], xsam_e[:,1],'-',markersize=4.0, linewidth=1.0,alpha=0.4,color='tab:purple')
 plot_traj_set(xbar,ubar,c_list,H_list,Qbar,xi=xi,xf=xf,Qi=Qini,Qf=Qf,plt=plt,flag_label=True)
@@ -260,10 +256,10 @@ plt.plot(xnom[:,0],xnom[:,1],'-.',color='tab:brown',label='traj w/o funnel')
 plt.legend(fontsize=fS)
 plt.grid(True)
 plt.rcParams["font.family"] = "Times New Roman"
-# plt.show()
+plt.show()
 
 fS = 20
-plt.figure(figsize=(10,5))
+plt.figure(0,figsize=(10,5))
 alpha = 0.5
 t_index = np.array(range(N+1))*delT
 for i in range(num_sample) :
@@ -277,49 +273,26 @@ for i in range(num_sample) :
     plt.subplot(122)
     plt.plot(tsam_e, usam_e[:,1],color='tab:purple',alpha=alpha,linewidth=1.0)
 plt.subplot(121)
-# plt.plot(tsam_e, usam_e[:,0]*0+myConst.vmax,'-.',color='tab:red',alpha=1.0,linewidth=2.0,label='limit')
+plt.plot(tsam_e, usam_e[:,0]*0+myConst.vmax,'-.',color='tab:red',alpha=1.0,linewidth=2.0,label='limit')
 plt.step(t_index, [*ubar[:N,0],ubar[N-1,0]],'--',color='tab:orange',alpha=1.0,where='post',linewidth=2.0,label='nominal')
 plt.plot(1e3, 1e3,'-',color='tab:purple',alpha=1.0,linewidth=1.0,label='samples')
 plt.xlabel('time (s)', fontsize = fS)
-plt.ylabel('v (m/s)', fontsize = fS)
-plt.axis([0.0, tf, 1.0, 4.5])
+plt.ylabel('$u_v$ (m/s)', fontsize = fS)
+plt.xticks(fontsize=15)
+plt.yticks(fontsize=15)
+plt.axis([0.0, tf, -0.5, 4.5])
 plt.grid(True)
 plt.subplot(122)
-# plt.plot(tsam_e, usam_e[:,1]*0+myConst.wmax,'-.',color='tab:red',alpha=1.0,linewidth=2.0)
-# plt.plot(tsam_e, usam_e[:,1]*0+myConst.wmin,'-.',color='tab:red',alpha=1.0,linewidth=2.0,label='limit')
+plt.plot(tsam_e, usam_e[:,1]*0+myConst.wmax,'-.',color='tab:red',alpha=1.0,linewidth=2.0)
+plt.plot(tsam_e, usam_e[:,1]*0+myConst.wmin,'-.',color='tab:red',alpha=1.0,linewidth=2.0,label='limit')
 plt.step(t_index, [*ubar[:N,1],ubar[N-1,1]],'--',color='tab:orange',alpha=1.0,where='post',linewidth=2.0,label='nominal')
 plt.plot(1e3, 1e3,'-',color='tab:purple',alpha=1.0,linewidth=1.0,label='samples')
 plt.xlabel('time (s)', fontsize = fS)
-plt.ylabel('w (rad/s)', fontsize = fS)
+plt.ylabel('$u_w$ (rad/s)', fontsize = fS)
+plt.xticks(fontsize=15)
+plt.yticks(fontsize=15)
 plt.axis([0.0, tf, -3, 3])
 plt.legend(fontsize=fS)
 plt.rcParams["font.family"] = "Times New Roman"
 plt.grid(True)
-# plt.show()
-
-fS = 20
-plt.figure(figsize=(10,5))
-alpha = 0.5
-t_index = np.array(range(N+1))*delT
-for i in range(num_sample) :
-    tsam_e = tsam[i]
-    xsam_e = xsam[i]
-    wsam_e = wsam[i]
-#     plot_state_input(tsam_e,xsam_e,usam_e,None,None,N,delT,alpha,plt,flag_step=False)
-    plt.subplot(121)
-    plt.plot(tsam_e, wsam_e[:,0],color='tab:purple',alpha=alpha,linewidth=1.0)
-    plt.subplot(122)
-    plt.plot(tsam_e, wsam_e[:,1],color='tab:purple',alpha=alpha,linewidth=1.0)
-plt.subplot(121)
-plt.plot(1e3, 1e3,'-',color='tab:purple',alpha=1.0,linewidth=1.0,label='samples')
-plt.xlabel('time (s)', fontsize = fS)
-plt.ylabel('w1 (m)', fontsize = fS)
-plt.axis([0.0, tf, -2, 2])
-plt.subplot(122)
-plt.plot(1e3, 1e3,'-',color='tab:purple',alpha=1.0,linewidth=1.0,label='samples')
-plt.xlabel('time (s)', fontsize = fS)
-plt.ylabel('w2 (m)', fontsize = fS)
-plt.axis([0.0, tf, -2, 2])
-plt.legend(fontsize=fS)
-plt.rcParams["font.family"] = "Times New Roman"
 plt.show()
