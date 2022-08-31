@@ -26,8 +26,9 @@ class UnicycleConstraints(OptimalcontrolConstraints):
         super().__init__(name,ix,iu)
         self.idx_bc_f = slice(0, ix)
         self.ih = 4
-        self.vmax = 4
-        self.vmin = -4
+
+        self.vmax = 4.0
+        self.vmin = -4.0
 
         self.wmax = 2.5
         self.wmin = -2.5

@@ -288,7 +288,7 @@ plt.plot(tsam_e, usam_e[:,1]*0+myConst.wmin,'-.',color='tab:red',alpha=1.0,linew
 plt.step(t_index, [*ubar[:N,1],ubar[N-1,1]],'--',color='tab:orange',alpha=1.0,where='post',linewidth=2.0,label='nominal')
 plt.plot(1e3, 1e3,'-',color='tab:purple',alpha=1.0,linewidth=1.0,label='samples')
 plt.xlabel('time (s)', fontsize = fS)
-plt.ylabel('$u_w$ (rad/s)', fontsize = fS)
+plt.ylabel('$u_{\Theta}$ (rad/s)', fontsize = fS)
 plt.xticks(fontsize=15)
 plt.yticks(fontsize=15)
 plt.axis([0.0, tf, -3, 3])
