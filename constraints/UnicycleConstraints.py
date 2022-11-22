@@ -13,12 +13,11 @@ def print_np(x):
 
 from constraints.constraints import OptimalcontrolConstraints
 
-def get_obs_ab(c,H,x_bar) :
-    tmp1 = 1 - np.linalg.norm(H@(x_bar[0:2]-c))
-    tmp2 = (H.T@H@(x_bar[0:2]-c)/np.linalg.norm(H@(x_bar[0:2]-c))).T
-    a = - np.expand_dims(tmp2,1)
-    # a = -tmp2
-    b = - tmp1 - tmp2@x_bar[0:2]
+def get_obs_ab(c,H,xbar) :
+    hr = 1 - cvx.norm(H@(xbar[0:2]-c))
+    dhdr = - (H.T@H@(xbar[0:2]-c)/cvx.norm(H@(xbar[0:2]-c))).T
+    a = dhdr
+    b = dhdr@xbar[0:2] - hr
     return  a,b
 
 class UnicycleConstraints(OptimalcontrolConstraints):
@@ -27,8 +26,8 @@ class UnicycleConstraints(OptimalcontrolConstraints):
         self.idx_bc_f = slice(0, ix)
         self.ih = 4
 
-        self.vmax = 4.0
-        self.vmin = -4.0
+        self.vmax = 3.0
+        self.vmin = 0.0
 
         self.wmax = 2.5
         self.wmin = -2.5
@@ -38,24 +37,28 @@ class UnicycleConstraints(OptimalcontrolConstraints):
         self.c = c
         self.H = H
         
-    def forward(self,x,u,xbar,ubar,Q,K):
+    def forward(self,x,u,xbar,ubar,Q,K,refobs,aQav,aQaw):
         h = []
         # obstacle avoidance
-        def get_obs_const(c1,H1) :
-            a,b = get_obs_ab(c1,H1,xbar)
-            h_Q = np.sqrt(a.T@Q[0:2,0:2]@a)
-            return h_Q+a.T@x[0:2] <= b
-        if self.H is not None :
-            for c1,H1 in zip(self.c,self.H) :
-                h.append(get_obs_const(c1,H1))
+        # def get_obs_const(c1,H1) :
+        #     a,b = get_obs_ab(c1,H1,xbar)
+        #     h_Q = cvx.sqrt(a.T@Q[0:2,0:2]@a)
+        #     return h_Q+a.T@x[0:2] <= b
+        # if self.H is not None :
+        #     for c1,H1 in zip(self.c,self.H) :
+        #         h.append(get_obs_const(c1,H1))
+
+        for obs in refobs :
+            h.append(obs[3] + obs[0:2].T@x[0:2]<=obs[2])
+
         # input constraints
         a = np.expand_dims(np.array([1,0]),1)
-        h.append(np.sqrt(a.T@K@Q@K.T@a) + a.T@u <= self.vmax)
-        h.append(np.sqrt(a.T@K@Q@K.T@a) - a.T@u <= -self.vmin)
+        h.append(aQav + a.T@u <= self.vmax)
+        h.append(aQav - a.T@u <= -self.vmin)
 
         a = np.expand_dims(np.array([0,1]),1)
-        h.append(np.sqrt(a.T@K@Q@K.T@a) + a.T@u <= self.wmax)
-        h.append(np.sqrt(a.T@K@Q@K.T@a) - a.T@u <= -self.wmin)
+        h.append(aQaw + a.T@u <= self.wmax)
+        h.append(aQaw - a.T@u <= -self.wmin)
         return h
 
     def forward_bf(self,x,u,xbar,ubar,Q,K,bf):
@@ -85,11 +88,6 @@ class UnicycleConstraints(OptimalcontrolConstraints):
         h.append(np.sqrt(a.T@K@Q@K.T@a) - a.T@u + bf[idx_bf]<= -self.wmin)
         return h
 
-    def bc_final(self,x_cvx,xf):
-        h = []
-        h.append(x_cvx == xf)
-
-        return h
         
 
 

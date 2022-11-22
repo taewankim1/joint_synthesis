@@ -67,10 +67,9 @@ def plot_traj(x,u,c_list,H_list,xf=None,idx_plot=0) :
     plt.xlabel('X (m)', fontsize = fS)
     plt.ylabel('Y (m)', fontsize = fS)
 
-def plot_traj_set(x,u,c_list,H_list,Q,xi=None,xf=None,Qi=None,Qf=None,plt=plt,flag_label=True) :
+def plot_traj_set(x,u,c_list,H_list,Q,xi=None,xf=None,Qi=None,Qf=None,plt=plt,flag_label=True,fS=15) :
     radius_list,angle_list = get_radius_angle(Q)
 
-    fS = 15
     # plt.figure(idx_plot,figsize=(7,7))
     plt.plot(x[:,0], x[:,1],'--',color='tab:orange',alpha=0.8,linewidth=2.0)
     ax=plt.gca()

@@ -22,8 +22,8 @@ from PTR import PTR
 from utils.utils_alg import get_sample_eta_w,propagate_model
 import cvxpy as cvx
 from scipy.integrate import solve_ivp
-from EstimatingLipschitz import Lipschitz
-from LMI import Q_update
+from Lipschitz import Lipschitz
+from funlopt import Q_update
 from utils.utils_alg import forward_full_with_K,get_sample_trajectory
 import scipy
 

@@ -146,12 +146,12 @@ def forward_full_with_K_discrete(x0,x0_s,xnom,unom,Q,Y,model,N,ix,iu,iw,delT,fla
     usave = []
     xsave = []
     wsave = []
+    if flag_noise == True :
+        z = np.random.randn(iw)
+        w = z / np.linalg.norm(z)
+    else :
+        w = np.zeros(iw)
     for i in range(N) :
-        if flag_noise == True :
-            z = np.random.randn(iw)
-            w = z / np.linalg.norm(z)
-        else :
-            w = np.zeros(iw)
         tk_next = delT*(i+1)
         tk = delT*i
         K = Y[i]@np.linalg.inv(Q[i])
@@ -172,21 +172,22 @@ def forward_full_with_K_discrete(x0,x0_s,xnom,unom,Q,Y,model,N,ix,iu,iw,delT,fla
     xsave = np.array(xsave)
     usave = np.array(usave)
     wsave = np.array(wsave)
-    return tsave,xsave,usave,wsave
+    return tsave,xsave,usave,wsave,xnew
 
 def get_sample_trajectory(x0,x0_sample,xnom,unom,Q,Y,model,N,ix,iu,iw,delT,flag_noise=False,discrete=False) :
-    tsam,xsam,usam,wsam =[],[],[],[]
+    tsam,xsam,usam,wsam,xsamp =[],[],[],[],[]
     for idx,x0_s in enumerate(x0_sample) :
         if discrete == False :
             tsam_,xsam_,usam_ = forward_full_with_K(x0,x0_s,xnom,unom,Q,Y,model,N,ix,iu,iw,delT,flag_noise)
         else :
-            tsam_,xsam_,usam_,wsam_ = forward_full_with_K_discrete(x0,x0_s,xnom,unom,Q,Y,model,N,ix,iu,iw,delT,flag_noise)
+            tsam_,xsam_,usam_,wsam_,xsamp_ = forward_full_with_K_discrete(x0,x0_s,xnom,unom,Q,Y,model,N,ix,iu,iw,delT,flag_noise)
 
         tsam.append(tsam_)
         xsam.append(xsam_)
         usam.append(usam_)
         wsam.append(wsam_)
-    return tsam,xsam,usam,wsam
+        xsamp.append(xsamp_)
+    return tsam,xsam,usam,wsam,xsamp
     # return np.array(tsam),np.array(xsam),np.array(usam),np.array(wsam)
 
 def get_sample_eta_w(Q,zs_sample,zw_sample) :

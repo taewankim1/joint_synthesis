@@ -10,9 +10,15 @@ from scipy.integrate import solve_ivp
 from model.model import OptimalcontrolModel
 
 class unicycle(OptimalcontrolModel):
-    def __init__(self,name,ix,iu,iw,linearzation):
+    def __init__(self,name,ix,iu,iw,iq,ip,C,D,E,G,linearzation):
         super().__init__(name,ix,iu,linearzation)
         self.iw = iw
+        self.iq = iq
+        self.ip = ip
+        self.C = C
+        self.D = D
+        self.E = E
+        self.G = G
         
     def forward(self,x,u,idx=None):
         xdim = np.ndim(x)
