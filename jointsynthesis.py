@@ -7,6 +7,7 @@ def print_np(x):
     print ("Type is %s" % (type(x)))
     print ("Shape is %s" % (x.shape,))
     # print ("Values are: \n%s" % (x))
+from utils.utils_plot import plot_traj_set
 
 class jointsynthesis:
     def __init__(self,model,traj_solver,funl_solver,lip_estimator,total_iter,
@@ -66,16 +67,6 @@ class jointsynthesis:
             Qnew,Knew,Ynew,status,funl_cost = self.funl_solver.solve(gammanew,Qhat,Yhat,A,B,C,D,E,F,G)
             sub_history['t_funlopt'] = time.time() - tic
             
-            
-            # Plot
-        #     plt.figure(figsize=(7,7))
-        #     plt.rcParams["font.family"] = "Times New Roman"
-        #     plt.rcParams["legend.loc"] = 'upper left'
-        #     plot_traj_set(xnew,unew,c_list,H_list,Qnew,xi=xi,xf=xf,Qi=Qini,Qf=Qf,plt=plt)
-        #     plt.title(str(idx_iter+1)+' iterations',fontsize=15)
-        #     plt.axis([-1.0, 9.0, -1.0, 5.0])
-        #     plt.show()
-
             # measure the difference
             xdiff = np.sum(np.linalg.norm(xhat-xnew,axis=1)**2)
             udiff = np.sum(np.linalg.norm(uhat-unew,axis=1)**2)

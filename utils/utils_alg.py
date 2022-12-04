@@ -64,7 +64,9 @@ def get_radius_angle(Q_list) :
         eig,_ = np.linalg.eig(np.linalg.inv(Q_))
         radius = np.sqrt(1/eig)
         # print("radius of x,y,theta",radius)
-        Q_proj = project_ellipse(Q_) 
+        A = np.array([[1,0,0],[0,1,0]])
+        # Q_proj = project_ellipse(Q_) 
+        Q_proj = A@Q_@A.T
         Q_inv = np.linalg.inv(Q_proj)
         eig,eig_vec = np.linalg.eig(Q_inv)
         radius = np.sqrt(1/eig)
@@ -136,7 +138,7 @@ def forward_full_with_K(x0,x0_s,xnom,unom,Q,Y,model,N,ix,iu,iw,delT,flag_noise) 
 def forward_full_with_K_discrete(x0,x0_s,xnom,unom,Q,Y,model,N,ix,iu,iw,delT,flag_noise) :
     # only for ZOH case
     def dfdt(t,x,u,w) :
-        return np.squeeze(model.forward_noise_1(x,u,w))
+        return np.squeeze(model.forward_uncertain(x,u,w))
 
     xnew = np.zeros((N+1,ix))
     # unew = np.zeros((N+1,iu))
@@ -164,6 +166,9 @@ def forward_full_with_K_discrete(x0,x0_s,xnom,unom,Q,Y,model,N,ix,iu,iw,delT,fla
             wsave.append(w)
         # next state condition
         xnew[i+1] = sol.y[:,-1]
+        radii = (xnew[i+1]-xnom[i+1]).T@np.linalg.inv(Q[i+1])@(xnew[i+1]-xnom[i+1])
+        if radii > 1 :
+            print("there is invariance violation")
     tsave.append(sol.t[-1])
     xsave.append(sol.y[:,-1])
     usave.append(u)
@@ -174,14 +179,10 @@ def forward_full_with_K_discrete(x0,x0_s,xnom,unom,Q,Y,model,N,ix,iu,iw,delT,fla
     wsave = np.array(wsave)
     return tsave,xsave,usave,wsave,xnew
 
-def get_sample_trajectory(x0,x0_sample,xnom,unom,Q,Y,model,N,ix,iu,iw,delT,flag_noise=False,discrete=False) :
+def get_sample_trajectory(x0,x0_sample,xnom,unom,Q,Y,model,N,ix,iu,iw,delT,flag_noise=False) :
     tsam,xsam,usam,wsam,xsamp =[],[],[],[],[]
     for idx,x0_s in enumerate(x0_sample) :
-        if discrete == False :
-            tsam_,xsam_,usam_ = forward_full_with_K(x0,x0_s,xnom,unom,Q,Y,model,N,ix,iu,iw,delT,flag_noise)
-        else :
-            tsam_,xsam_,usam_,wsam_,xsamp_ = forward_full_with_K_discrete(x0,x0_s,xnom,unom,Q,Y,model,N,ix,iu,iw,delT,flag_noise)
-
+        tsam_,xsam_,usam_,wsam_,xsamp_ = forward_full_with_K_discrete(x0,x0_s,xnom,unom,Q,Y,model,N,ix,iu,iw,delT,flag_noise)
         tsam.append(tsam_)
         xsam.append(xsam_)
         usam.append(usam_)

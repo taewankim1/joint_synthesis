@@ -115,6 +115,61 @@ def plot_traj_set(x,u,c_list,H_list,Q,xi=None,xf=None,Qi=None,Qf=None,plt=plt,fl
     for label in ax.get_yticklabels():
         label.set_fontproperties(ticks_font)
 
+def plot_comparison(x,x_l,c_list,H_list,Q,Q_l,xi=None,xf=None,Qi=None,Qf=None,plt=plt,flag_label=True,fS=15) :
+
+    # plt.figure(idx_plot,figsize=(7,7))
+    plt.plot(x[:,0], x[:,1],'--',color='tab:orange',alpha=0.8,linewidth=2.0)
+    plt.plot(x_l[:,0], x_l[:,1],'-.',color='tab:brown',alpha=0.8,linewidth=2.0)
+    ax=plt.gca()
+    if Qi is not None :
+        radius_f,angle_f = get_radius_angle([Qi])
+        for radius,angle in zip(radius_f,angle_f) :
+            ell = Ellipse((xi[0],xi[1]),radius[0]*2,radius[1]*2,angle=np.rad2deg(angle),
+            color='tab:green',alpha=0.5,fill=True)
+            ax.add_patch(ell)
+    if Qf is not None :
+        radius_f,angle_f = get_radius_angle([Qf])
+        for radius,angle in zip(radius_f,angle_f) :
+            ell = Ellipse((xf[0],xf[1]),radius[0]*2,radius[1]*2,angle=np.rad2deg(angle),
+            color='tab:green',alpha=0.5,fill=True)
+            ax.add_patch(ell)
+    for ce,H in zip(c_list,H_list) :
+        rx = 1/H[0,0]
+        ry = 1/H[1,1]
+        circle1 = Ellipse((ce[0],ce[1]),rx*2,ry*2,color='tab:red',alpha=0.5,fill=True)
+        ax.add_patch(circle1)
+    radius_list,angle_list = get_radius_angle(Q)
+    for x_,radius,angle in zip(x,radius_list,angle_list) :
+        ell = Ellipse((x_[0],x_[1]),radius[0]*2,radius[1]*2,angle=np.rad2deg(angle),color='tab:blue',alpha=0.5,fill=True)
+        ax.add_patch(ell)
+
+    radius_list,angle_list = get_radius_angle(Q_l)
+    for x_,radius,angle in zip(x_l,radius_list,angle_list) :
+        ell = Ellipse((x_[0],x_[1]),radius[0]*2,radius[1]*2,angle=np.rad2deg(angle),color='tab:brown',alpha=1.0,fill=False)
+        ax.add_patch(ell)
+    if flag_label == True :
+        plt.plot(1e3,1e3,'--',color='tab:orange',label="nominal")
+        plt.plot(1e3,1e3,'o',markersize=15,color='tab:blue',label="funnel") 
+        plt.plot(1e3,1e3,'o',markersize=15,color='tab:green',label="initial and final") 
+        plt.plot(1e3,1e3,'o',markersize=15,alpha=0.5,color='tab:red',label="obstacles") 
+        plt.plot(1e3,1e3,'-.',color='tab:brown',label="approx nominal")
+        plt.plot(1e3,1e3,'o',markersize=15,fillstyle='none',linewidth=4,color='tab:brown',label="approx funnel") 
+        # ell = Ellipse((1e3,1e3),radius[0]*2,radius[1]*2,angle=np.rad2deg(angle),color='tab:brown',alpha=1.0,fill=False,label='linear funnel')
+        # ax.add_patch(ell)
+
+    plt.gca().set_aspect('equal', adjustable='box')
+    plt.axis([-1.0, 6.0, -1.0, 6.0])
+    plt.xlabel('$r_x$ (m)', fontsize = fS)
+    plt.ylabel('$r_y$ (m)', fontsize = fS)
+    if flag_label == True :
+        plt.legend(fontsize=fS)
+    ticks_font = "Times New Roman"
+    for label in ax.get_xticklabels():
+        label.set_fontproperties(ticks_font)
+
+    for label in ax.get_yticklabels():
+        label.set_fontproperties(ticks_font)
+
 
 # plot sample
 # t_index = np.array(range(N+1))*delT

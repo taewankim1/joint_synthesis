@@ -25,6 +25,7 @@ class Lipschitz :
         zw_sample = [] 
         self.flag_uniform = flag_uniform
         if self.flag_uniform == True :
+            assert num_sample == 100, f"number of samples should be 100 for the uniform case"
         # uniformly fixed
             for i in np.linspace(-1.0, 1.0, num=5) :
                 for j in np.linspace(-1.0, 1.0, num=5) :
@@ -37,8 +38,6 @@ class Lipschitz :
                     z = np.array([i,j])
                     zw = z / np.linalg.norm(z)
                     zw_sample.append(zw)
-            assert len(zs_sample) == len(zw_sample)
-            assert len(zs_sample) == num_sample
         else :
             for _ in range(self.num_sample) :
                 z = np.random.randn(ix)
@@ -84,7 +83,7 @@ class Lipschitz :
         xprop = self.xprop
         def propagate_model(model,x0,u,w,delT) :
             def dfdt(t,x,u,w) :
-                return np.squeeze(model.forward_noise_1(x,u,w))
+                return np.squeeze(model.forward_uncertain(x,u,w))
 
             sol = solve_ivp(dfdt,(0,delT),x0,args=(u,w),method='RK45',rtol=1e-6,atol=1e-10)
             xnext = sol.y[:,-1]
