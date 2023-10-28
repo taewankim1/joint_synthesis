@@ -19,7 +19,7 @@ from Scaling import TrajectoryScaling
 class trajopt:
     def __init__(self,name,horizon,tf,maxIter,Model,Cost,Const,Scaling=None,
                         w_c=1,w_vc=1e4,w_tr=1e-3,tol_vc=1e-10,tol_tr=1e-3,tol_dyn=1e-3,
-                        flag_policyopt=False,ignore_dpp=False,verbosity=True):
+                        flag_policyopt=False,verbosity=True):
         self.name = name
         self.model = Model
         self.const = Const
@@ -46,7 +46,6 @@ class trajopt:
         self.maxIter = maxIter
         self.last_head = True
         self.flag_policyopt = flag_policyopt
-        self.ignore_dpp = ignore_dpp
         self.initialize()
         self.cvx_initialize()
 
@@ -126,7 +125,7 @@ class trajopt:
         ucvx = cvx.Variable((N+1,iu))
         vc = cvx.Variable((N,ix))
 
-        # reference trajectory
+        # # reference trajectory
         xbar_unscaled = cvx.Parameter((N+1,ix))
         ubar_unscaled = cvx.Parameter((N+1,iu))
 
@@ -136,52 +135,29 @@ class trajopt:
 
         # Matrices and Q,K
         A,B,s,z = [],[],[],[]
-        Q,K = [],[]
+        # Q,K = [],[]
         for i in range(N) :
             A.append(cvx.Parameter((ix,ix)))
             B.append(cvx.Parameter((ix,iu)))
             s.append(cvx.Parameter(ix))
             z.append(cvx.Parameter(ix))
-            Q.append(cvx.Parameter((ix,ix)))
-            K.append(cvx.Parameter((iu,ix)))
-        Q.append(cvx.Parameter((ix,ix)))
+        #     Q.append(cvx.Parameter((ix,ix)))
+        #     K.append(cvx.Parameter((iu,ix)))
+        # Q.append(cvx.Parameter((ix,ix)))
                    
-        num_obs = len(self.const.c)
-        refobs = []
-        aQav = []
-        aQaw = []
-        affines = []
-        if "unicycle" in self.name :
-            for i in range(N) :
-                if num_obs > 0 :
-                    refobs.append(cvx.Parameter((num_obs,4))) # a,b, sqrt(a.TQa)
-                    # aQav.append(cvx.Parameter((1,1)))# sqrt(aKQK.Ta)
-                    # aQaw.append(cvx.Parameter((1,1)))# sqrt(aKQK.Ta)
-                else :
-                    refobs.append(None)
-                    # aQav.append(None)
-                    # aQaw.append(None)
-                affine = {}
-                affine['aQav'] = cvx.Parameter((1,1))
-                affine['aQaw'] = cvx.Parameter((1,1))
-                affines.append(affine)
-        elif "freeflyer" in self.name :
-            for i in range(N) :
-                if num_obs > 0 :
-                    refobs.append(cvx.Parameter((num_obs,4))) # a,b, sqrt(a.TQa)
-                else :
-                    refobs.append(None)
-                affine = {}
-                if i > 0 :
-                    affine['aQav'] = cvx.Parameter((1,1))
-                    affine['av'] = cvx.Parameter((1,ix))
-                    affine['aQa_omega'] = cvx.Parameter((1,1))
-                    affine['a_omega'] = cvx.Parameter((1,ix))
-                affine['aQaT'] = cvx.Parameter((1,1))
-                affine['aT'] = cvx.Parameter((1,iu))
-                affine['aQaM'] = cvx.Parameter((1,1))
-                affine['aM'] = cvx.Parameter((1,iu))
-                affines.append(affine)
+        # num_obs = len(self.const.c)
+        # refobs = []
+        # aQav = []
+        # aQaw = []
+        # for i in range(N) :
+        #     if num_obs > 0 :
+        #         refobs.append(cvx.Parameter((num_obs,4))) # a,b, sqrt(a.TQa)
+        #         aQav.append(cvx.Parameter((1,1)))# sqrt(aKQK.Ta)
+        #         aQaw.append(cvx.Parameter((1,1)))# sqrt(aKQK.Ta)
+        #     else :
+        #         refobs.append(None)
+        #         aQav.append(None)
+        #         aQaw.append(None)
 
         constraints = []
         # boundary conditions
@@ -190,16 +166,22 @@ class trajopt:
 
         # state and input contraints
         for i in range(0,N) : 
+            # constraints += self.const.forward(Sx@xcvx[i]+sx,
+            #     Su@ucvx[i]+su,
+            #     Sx@xbar_unscaled[i]+sx,
+            #     Su@ubar_unscaled[i]+su,
+            #     Q[i],K[i],
+            #     refobs[i],
+            #     aQav[i],aQaw[i])
             constraints += self.const.forward(Sx@xcvx[i]+sx,
-                Su@ucvx[i]+su,
-                Sx@xbar_unscaled[i]+sx,
-                Su@ubar_unscaled[i]+su,
-                Q[i],K[i],
-                refobs[i],
-                affines[i],idx=i)
+                Su@ucvx[i]+su)
 
         # model constraints
         for i in range(0,N) :
+            # constraints.append(Sx@xcvx[i+1]+sx == A[i]@(Sx@xcvx[i]+sx)+B[i]@(Su@ucvx[i]+su)
+            #     +self.tf*s[i]
+            #     +z[i]
+            #     +vc[i])
             constraints.append(xcvx[i+1]+iSx@sx == iSx@A[i]@(Sx@xcvx[i]+sx) 
                 +iSx@B[i]@(Su@ucvx[i]+su)
                 +self.tf*iSx@s[i]
@@ -214,7 +196,7 @@ class trajopt:
         for i in range(0,N+1) :
             if i < N :
                 c_vc.append(1 * cvx.norm(vc[i],1))
-            c_control.append(1 * self.cost.estimate_cost_cvx(Sx@xcvx[i]+
+            c_control.append(self.cost.estimate_cost_cvx(Sx@xcvx[i]+
                 sx,Su@ucvx[i]+su,i))
             c_tr.append(cvx.quad_form(xcvx[i]-xbar_unscaled[i],np.eye(ix)) +
                     cvx.quad_form(ucvx[i]-ubar_unscaled[i],np.eye(iu)))
@@ -236,21 +218,17 @@ class trajopt:
         self.cvx_params = {}
         self.cvx_params['xbar_unscaled'] = xbar_unscaled
         self.cvx_params['ubar_unscaled'] = ubar_unscaled
-        if "unicycle" in self.name :
-            self.cvx_params['refobs'] = refobs
-            # self.cvx_params['aQav'] = aQav
-            # self.cvx_params['aQaw'] = aQaw
-        elif "freeflyer" in self.name :
-            self.cvx_params['refobs'] = refobs
-        self.cvx_params['affines'] = affines
+        # self.cvx_params['refobs'] = refobs
+        # self.cvx_params['aQav'] = aQav
+        # self.cvx_params['aQaw'] = aQaw
         self.cvx_params['xi'] = xi
         self.cvx_params['xf'] = xf
         self.cvx_params['A'] = A
         self.cvx_params['B'] = B
         self.cvx_params['s'] = s
         self.cvx_params['z'] = z
-        self.cvx_params['Q'] = Q
-        self.cvx_params['K'] = K
+        # self.cvx_params['Q'] = Q
+        # self.cvx_params['K'] = K
         # save cost
         self.cvx_cost = {}
         self.cvx_cost['l_all'] = l_all
@@ -272,9 +250,9 @@ class trajopt:
             self.cvx_params['B'][i].value = self.B[i]
             self.cvx_params['s'][i].value = self.s[i]
             self.cvx_params['z'][i].value = self.z[i]
-            self.cvx_params['Q'][i].value = self.Q[i]
-            self.cvx_params['K'][i].value = self.K[i]
-        self.cvx_params['Q'][-1].value = self.Q[-1]
+            # self.cvx_params['Q'][i].value = self.Q[i]
+            # self.cvx_params['K'][i].value = self.K[i]
+        # self.cvx_params['Q'][-1].value = self.Q[-1]
         self.cvx_params['xi'].value = self.xi
         self.cvx_params['xf'].value = self.xf
 
@@ -286,63 +264,33 @@ class trajopt:
         self.cvx_params['xbar_unscaled'].value = xbar_unscaled
         self.cvx_params['ubar_unscaled'].value = ubar_unscaled
 
-        num_obs = len(self.const.c)
-        def get_obs_ab(c,H,xbar) :
-            hr = 1 - np.linalg.norm(H@(xbar[0:2]-c))
-            dhdr = - (H.T@H@(xbar[0:2]-c)/np.linalg.norm(H@(xbar[0:2]-c))).T
-            a = dhdr
-            b = dhdr@xbar[0:2] - hr
-            return  a,b
+        # num_obs = len(self.const.c)
+        # def get_obs_ab(c,H,xbar) :
+        #     hr = 1 - np.linalg.norm(H@(xbar[0:2]-c))
+        #     dhdr = - (H.T@H@(xbar[0:2]-c)/np.linalg.norm(H@(xbar[0:2]-c))).T
+        #     a = dhdr
+        #     b = dhdr@xbar[0:2] - hr
+        #     return  a,b
 
-        if "unicycle" in self.name :
-            if num_obs > 0 :
-                for i in range(N) :
-                    tmp = np.zeros((num_obs,4))
-                    for j in range(num_obs) :
-                        a,b = get_obs_ab(self.const.c[j],self.const.H[j],self.x[i])
-                        tmp[j] = np.hstack((a,b,np.sqrt(a.T@self.Q[i][0:2,0:2]@a)))
-                    self.cvx_params['refobs'][i].value = tmp
-                av = self.const.av
-                aw = self.const.aw
-                # linear constraint
-                for i in range(N) :
-                    self.cvx_params['affines'][i]['aQav'].value =  np.sqrt(av.T@self.K[i]@self.Q[i]@self.K[i].T@av)
-                    self.cvx_params['affines'][i]['aQaw'].value =  np.sqrt(aw.T@self.K[i]@self.Q[i]@self.K[i].T@aw)
-        elif "freeflyer" in self.name :
-            if num_obs > 0 :
-                for i in range(N) :
-                    tmp = np.zeros((num_obs,4))
-                    for j in range(num_obs) :
-                        a,b = get_obs_ab(self.const.c[j],self.const.H[j],self.x[i])
-                        tmp[j] = np.hstack((a,b,np.sqrt(a.T@self.Q[i][0:2,0:2]@a)))
-                    self.cvx_params['refobs'][i].value = tmp
-                for i in range(0,N) :
-                    if i > 0 :
-                        A = np.vstack((np.zeros((3,3)),np.eye(3),np.zeros((6,3)))).T
-                        atmp = self.x[i][:,np.newaxis].T@A.T@A / np.linalg.norm(A@self.x[i][:,np.newaxis])
-                        self.cvx_params['affines'][i]['av'].value = atmp
-                        self.cvx_params['affines'][i]['aQav'].value = np.sqrt(atmp@self.Q[i]@atmp.T)
-
-                        A = np.vstack((np.zeros((9,3)),np.eye(3))).T
-                        atmp = self.x[i][:,np.newaxis].T@A.T@A / np.linalg.norm(A@self.x[i][:,np.newaxis])
-                        self.cvx_params['affines'][i]['a_omega'].value = atmp
-                        self.cvx_params['affines'][i]['aQa_omega'].value = np.sqrt(atmp@self.Q[i]@atmp.T)
-
-                    A = np.vstack((np.eye(3),np.zeros((3,3)))).T
-                    atmp = self.u[i][:,np.newaxis].T@A.T@A / np.linalg.norm(A@self.u[i][:,np.newaxis])
-                    self.cvx_params['affines'][i]['aT'].value = atmp
-                    self.cvx_params['affines'][i]['aQaT'].value = np.sqrt(atmp@self.K[i]@self.Q[i]@self.K[i].T@atmp.T)
-
-                    A = np.vstack((np.zeros((3,3)),np.eye(3))).T
-                    atmp = self.u[i][:,np.newaxis].T@A.T@A / np.linalg.norm(A@self.u[i][:,np.newaxis])
-                    self.cvx_params['affines'][i]['aM'].value = atmp
-                    self.cvx_params['affines'][i]['aQaM'].value = np.sqrt(atmp@self.K[i]@self.Q[i]@self.K[i].T@atmp.T)
-
+        # if num_obs > 0 :
+        #     for i in range(N) :
+        #         tmp = np.zeros((num_obs,4))
+        #         for j in range(num_obs) :
+        #             a,b = get_obs_ab(self.const.c[j],self.const.H[j],self.x[i])
+        #             tmp[j] = np.hstack((a,b,np.sqrt(a.T@self.Q[i][0:2,0:2]@a)))
+        #         self.cvx_params['refobs'][i].value = tmp
+        #     av = np.expand_dims(np.array([1,0]),1)
+        #     aw = np.expand_dims(np.array([0,1]),1)
+        #     for i in range(N) :
+        #         self.cvx_params['aQav'][i].value =  np.sqrt(av.T@self.K[i]@self.Q[i]@self.K[i].T@av)
+        #         self.cvx_params['aQaw'][i].value =  np.sqrt(aw.T@self.K[i]@self.Q[i]@self.K[i].T@aw)
 
         error = False
         try : 
-            # self.prob.solve(verbose=False,solver=cvx.GUROBI,warm_start=False,ignore_dpp=self.ignore_dpp)
-            self.prob.solve(solver=cvx.CLARABEL,ignore_dpp=self.ignore_dpp)
+            # self.prob.solve(verbose=False,solver=cvx.ECOS,warm_start=False)
+            # self.prob.solve(verbose=False,solver=cvx.ECOS,ignore_dpp=True)
+            self.prob.solve(verbose=False,solver=cvx.GUROBI,ignore_dpp=True)
+            # self.prob.solve(verbose=False,solver=cvx.GUROBI,warm_start=False)
         except cvx.error.SolverError :
             error = True
 
@@ -411,7 +359,9 @@ class trajopt:
             history_iter = {}
             # step1. differentiate dynamics and cost
             tic = time.time()
-            self.A,self.B,self.s,self.z,self._ = self.model.diff_discrete_zoh(self.x[0:N,:],self.u[0:N,:],self.delT,self.tf)
+            self.A,self.B,self.s,self.z,self.xtmp = self.model.diff_discrete_zoh(self.x[0:N,:],self.u[0:N,:],self.delT,self.tf)
+            # print(self.s[0])
+            # print(self.z)
             history_iter['derivs'] = time.time() - tic
             eps_machine = np.finfo(float).eps
             self.A[np.abs(self.A) < eps_machine] = 0
@@ -511,7 +461,7 @@ class trajopt:
                     print("└──────────────────────────────────────────────────────────────────────────────────────────────┘\n")
                 total_num_iter = iteration+1
 
-        return self.xfwd,self.ufwd,self.xnew,self.unew,self.tf, \
+        return self.xnew,self.unew,self.tf, \
             total_num_iter, \
             l_all,l_control,l_vc,l_tr, \
             history

@@ -49,6 +49,8 @@ class jointsynthesis:
             xfwd,_,xnew,unew,_,total_num_iter,_,traj_cost,traj_vc,traj_tr,traj_history = self.traj_solver.run(xhat,uhat,xi,xf,Qhat,Khat)
             dyn_error = np.linalg.norm(xfwd - xnew,axis=1)
             sub_history['t_trajopt'] = traj_history[-1]['cvxopt']
+            const_input = self.traj_solver.const.get_const_input(xnew[:N],unew[:N])
+            const_state = self.traj_solver.const.get_const_state(xnew[:N],unew[:N])
             
             # discretization
             tic = time.time()
@@ -64,7 +66,8 @@ class jointsynthesis:
 
             # STEP 3 : Funnel update via SDP
             tic = time.time()
-            Qnew,Knew,Ynew,status,funl_cost = self.funl_solver.solve(gammanew,Qhat,Yhat,A,B,C,D,E,F,G)
+            Qnew,Knew,Ynew,status,funl_cost = self.funl_solver.solve(gammanew,Qhat,Yhat,A,B,C,D,E,F,G,
+                const_state=const_state,const_input=const_input)
             sub_history['t_funlopt'] = time.time() - tic
             
             # measure the difference

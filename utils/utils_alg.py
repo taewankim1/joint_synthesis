@@ -64,9 +64,10 @@ def get_radius_angle(Q_list) :
         eig,_ = np.linalg.eig(np.linalg.inv(Q_))
         radius = np.sqrt(1/eig)
         # print("radius of x,y,theta",radius)
-        A = np.array([[1,0,0],[0,1,0]])
+        # A = np.array([[1,0,0],[0,1,0]])
         # Q_proj = project_ellipse(Q_) 
-        Q_proj = A@Q_@A.T
+        # Q_proj = A@Q_@A.T
+        Q_proj = Q_[0:2,0:2]
         Q_inv = np.linalg.inv(Q_proj)
         eig,eig_vec = np.linalg.eig(Q_inv)
         radius = np.sqrt(1/eig)

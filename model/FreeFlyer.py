@@ -9,18 +9,35 @@ def print_np(x):
 from scipy.integrate import solve_ivp
 from model.model import OptimalcontrolModel
 
-class unicycle1(OptimalcontrolModel):
+class freeflyer(OptimalcontrolModel):
     def __init__(self,name,linearzation):
-        ix = 3
-        iu = 2
-        self.iw = 2
-        self.iq = 2
-        self.ip = 2
+        ix = 12
+        iu = 6
+        self.iw = 6
+        self.iq = 4
+        # self.ip = 3
+        self.ip = 6
         super().__init__(name,ix,iu,linearzation)
-        self.C = np.array([[0,0,1],[0,0,0]])
-        self.D = np.array([[0,0],[1,0]])
-        self.E = np.array([[1,0],[0,1],[0,0]])
+        self.C = np.zeros((self.iq,ix))
+        self.C[0,6] = 1
+        self.C[1,7] = 1
+        # self.C[2,8] = 1
+        self.C[2,10] = 1
+        self.C[3,11] = 1
+        self.D = np.zeros((self.iq,self.iu))
+        self.E = np.zeros((ix,self.ip))
+        self.E[6,0] = 1
+        self.E[6,1] = 1
+        self.E[7,2] = 1
+        self.E[7,3] = 1
+        self.E[8,4] = 1
+        self.E[8,5] = 1
         self.G = np.zeros((self.iq,self.iw))
+        self.m = 7.2
+        self.J = 0.1083
+
+        self.w_in_T = 1*1e-3
+        self.w_in_M = 1*1e-6
 
         
     def forward(self,x,u,idx=None):
@@ -35,69 +52,55 @@ class unicycle1(OptimalcontrolModel):
             u = np.expand_dims(u,axis=0)
      
         # state & input
-        x1 = x[:,0]
-        x2 = x[:,1]
-        x3 = x[:,2]
-        
-        v = u[:,0]
-        w = u[:,1]
+        rx = x[:,0]
+        ry = x[:,1]
+        rz = x[:,2]
+
+        vx = x[:,3]
+        vy = x[:,4]
+        vz = x[:,5]
+
+        phi = x[:,6]
+        theta = x[:,7]
+        psi = x[:,8]
+
+        p = x[:,9]
+        q = x[:,10]
+        r = x[:,11]
+
+        Tx = u[:,0]
+        Ty = u[:,1]
+        Tz = u[:,2]
+        Mx = u[:,3]
+        My = u[:,4]
+        Mz = u[:,5]
         
         # output
         f = np.zeros_like(x)
-        f[:,0] = v * np.cos(x3)
-        f[:,1] = v * np.sin(x3)
-        f[:,2] = w
+        f[:,0] = vx
+        f[:,1] = vy
+        f[:,2] = vz
+
+        f[:,3] = 1/self.m * Tx
+        f[:,4] = 1/self.m * Ty
+        f[:,5] = 1/self.m * Tz
+
+        f[:,6] = p + np.sin(phi) * np.tan(theta) * q + np.cos(phi) * np.tan(theta) * r
+        f[:,7] = np.cos(phi) * q - np.sin(phi) * r
+        f[:,8] = np.sin(phi) / np.cos(theta) * q + np.cos(phi) / np.cos(theta) * r
+
+        # f[:,6] = p
+        # f[:,7] = q
+        # f[:,8] = r
+
+        f[:,9] = 1/self.J * Mx
+        f[:,10] = 1/self.J * My
+        f[:,11] = 1/self.J * Mz
 
         return f
 
-
-
-    def diff(self,x,u):
-
-        # dimension
-        ndim = np.ndim(x)
-        if ndim == 1: # 1 step state & input
-            N = 1
-            x = np.expand_dims(x,axis=0)
-            u = np.expand_dims(u,axis=0)
-        else :
-            N = np.size(x,axis = 0)
-        
-        # state & input
-        x1 = x[:,0]
-        x2 = x[:,1]
-        x3 = x[:,2]
-        
-        v = u[:,0]
-        w = u[:,1]    
-        
-        fx = np.zeros((N,self.ix,self.ix))
-        fx[:,0,0] = 0.0
-        fx[:,0,1] = 0.0
-        fx[:,0,2] = - v * np.sin(x3)
-        fx[:,1,0] = 0.0
-        fx[:,1,1] = 0.0
-        fx[:,1,2] = v * np.cos(x3)
-        fx[:,2,0] = 0.0
-        fx[:,2,1] = 0.0
-        fx[:,2,2] = 0.0
-        
-        fu = np.zeros((N,self.ix,self.iu))
-        fu[:,0,0] = np.cos(x3)
-        fu[:,0,1] = 0.0
-        fu[:,1,0] = np.sin(x3)
-        fu[:,1,1] = 0.0
-        fu[:,2,0] = 0.0
-        fu[:,2,1] = 1.0
-        
-        return np.squeeze(fx) , np.squeeze(fu)
-
     def forward_uncertain(self,x,u,w,idx=None):
         xdim = np.ndim(x)
-        udim = np.ndim(u)
-        wdim = np.ndim(w)
-        assert xdim == udim
-        assert wdim == udim
         if xdim == 1: # 1 step state & input
             N = 1
             x = np.expand_dims(x,axis=0)
@@ -107,26 +110,57 @@ class unicycle1(OptimalcontrolModel):
             N = np.size(x,axis = 0)
      
         # state & input
-        x1 = x[:,0]
-        x2 = x[:,1]
-        x3 = x[:,2]
-        
-        v = u[:,0]
-        omega = u[:,1]
-        
+        rx = x[:,0]
+        ry = x[:,1]
+        rz = x[:,2]
+
+        vx = x[:,3]
+        vy = x[:,4]
+        vz = x[:,5]
+
+        phi = x[:,6]
+        theta = x[:,7]
+        psi = x[:,8]
+
+        p = x[:,9]
+        q = x[:,10]
+        r = x[:,11]
+
+        Tx = u[:,0]
+        Ty = u[:,1]
+        Tz = u[:,2]
+        Mx = u[:,3]
+        My = u[:,4]
+        Mz = u[:,5]
+
         w1 = w[:,0]
         w2 = w[:,1]
-
+        w3 = w[:,2]
+        w4 = w[:,3]
+        w5 = w[:,4]
+        w6 = w[:,5]
+        
         # output
         f = np.zeros_like(x)
-        f[:,0] = v * np.cos(x3) + 0.1 * w1
-        f[:,1] = v * np.sin(x3) + 0.1 * w2
-        f[:,2] = omega
+        f[:,0] = vx
+        f[:,1] = vy
+        f[:,2] = vz
+
+        f[:,3] = 1/self.m * (Tx + self.w_in_T*w1)
+        f[:,4] = 1/self.m * (Ty + self.w_in_T*w2)
+        f[:,5] = 1/self.m * (Tz + self.w_in_T*w3)
+
+        f[:,6] = p + np.sin(phi) * np.tan(theta) * q + np.cos(phi) * np.tan(theta) * r
+        f[:,7] = np.cos(phi) * q - np.sin(phi) * r
+        f[:,8] = np.sin(phi) / np.cos(theta) * q + np.cos(phi) / np.cos(theta) * r
+
+        f[:,9] = 1/self.J * (Mx + self.w_in_M*w4)
+        f[:,10] = 1/self.J * (My + self.w_in_M*w5)
+        f[:,11] = 1/self.J * (Mz + self.w_in_M*w6)
 
         return f
 
     def diff_F(self,x,u,w):
-
         # dimension
         ndim = np.ndim(x)
         if ndim == 1: # 1 step state & input
@@ -137,22 +171,14 @@ class unicycle1(OptimalcontrolModel):
         else :
             N = np.size(x,axis = 0)
         
-        # state & input
-        x1 = x[:,0]
-        x2 = x[:,1]
-        x3 = x[:,2]
-        
-        uv = u[:,0]
-        uw = u[:,1]    
-        
-        fw = np.zeros((N,self.ix,2))
-        fw[:,0,0] = 0.1
-        fw[:,0,1] = 0.0
-        fw[:,1,0] = 0.0
-        fw[:,1,1] = 0.1
-        fw[:,2,0] = 0.0
-        fw[:,2,1] = 0.0
-        
+        fw = np.zeros((N,self.ix,6))
+        fw[:,3,0] = self.w_in_T/self.m
+        fw[:,4,1] = self.w_in_T/self.m
+        fw[:,5,2] = self.w_in_T/self.m
+        fw[:,9,3] = self.w_in_M/self.J
+        fw[:,10,4] = self.w_in_M/self.J
+        fw[:,11,5] = self.w_in_M/self.J
+
         return np.squeeze(fw)
     
     def diff_discrete_zoh_noise(self,x,u,w,delT,tf) :
@@ -222,80 +248,3 @@ class unicycle1(OptimalcontrolModel):
 
         return A,B,F,s,z,x_prop
 
-
-class unicycle2(unicycle1):
-    def __init__(self,name,linearzation):
-        super().__init__(name,linearzation)
-        # re-define
-        self.iw = 2
-        self.iq = 3
-        self.ip = 2
-        self.C = np.array([[0,0,1],[0,0,0],[0,0,0]])
-        self.D = np.array([[0,0],[1,0],[0,0]])
-        self.E = np.array([[1,0],[0,1],[0,0]])
-        self.G = np.array([[0,0],[0,0],[1,0]])
-
-    # def forward
-    # def diff 
-    def forward_uncertain(self,x,u,w,idx=None):
-        xdim = np.ndim(x)
-        udim = np.ndim(u)
-        wdim = np.ndim(w)
-        assert xdim == udim
-        assert wdim == udim
-        if xdim == 1: # 1 step state & input
-            N = 1
-            x = np.expand_dims(x,axis=0)
-            u = np.expand_dims(u,axis=0)
-            w = np.expand_dims(w,axis=0)
-        else :
-            N = np.size(x,axis = 0)
-     
-        # state & input
-        x1 = x[:,0]
-        x2 = x[:,1]
-        x3 = x[:,2]
-        
-        v = u[:,0]
-        omega = u[:,1]
-        
-        w1 = w[:,0]
-        w2 = w[:,1]
-
-        # output
-        f = np.zeros_like(x)
-        f[:,0] = (v + 0.1*w1) * np.cos(x3)
-        f[:,1] = (v + 0.1*w1) * np.sin(x3)
-        f[:,2] = omega + 0.1*w2
-
-        return f
-
-    def diff_F(self,x,u,w):
-
-        # dimension
-        ndim = np.ndim(x)
-        if ndim == 1: # 1 step state & input
-            N = 1
-            x = np.expand_dims(x,axis=0)
-            u = np.expand_dims(u,axis=0)
-            w = np.expand_dims(w,axis=0)
-        else :
-            N = np.size(x,axis = 0)
-        
-        # state & input
-        x1 = x[:,0]
-        x2 = x[:,1]
-        x3 = x[:,2]
-        
-        uv = u[:,0]
-        uw = u[:,1]    
-        
-        fw = np.zeros((N,self.ix,2))
-        fw[:,0,0] = 0.1*np.cos(x3)
-        fw[:,0,1] = 0.0
-        fw[:,1,0] = 0.1*np.sin(x3)
-        fw[:,1,1] = 0.0
-        fw[:,2,0] = 0.0
-        fw[:,2,1] = 0.1
-        
-        return np.squeeze(fw)

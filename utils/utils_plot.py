@@ -9,7 +9,57 @@ def print_np(x):
 #     print ("Values are: \n%s" % (x))
 from utils.utils_alg import get_radius_angle
 
-# def plot traj
+def plot_ellipse_2D(ax,Q,C,color='tab:blue') :
+    radius_f,angle_f = get_radius_angle([Q[0:2,0:2]])
+    for radius,angle in zip(radius_f,angle_f) :
+        ell = Ellipse((C[0],C[1]),radius[0]*2,radius[1]*2,angle=np.rad2deg(angle),
+        color=color,alpha=0.5,fill=True)
+        ax.add_patch(ell)
+def plot_ellipse_3D(ax,Q,C,color='tab:blue') :
+    N = 20
+    P = np.linalg.inv(Q[0:3,0:3])
+    U,D,V = np.linalg.svd(P)
+    a = 1/np.sqrt(D[0])
+    b = 1/np.sqrt(D[1])
+    c = 1/np.sqrt(D[2])
+
+    u = np.linspace(0, 2 * np.pi, N)
+    v = np.linspace(0, np.pi, N)
+
+    X = a * np.outer(np.cos(u), np.sin(v))
+    Y = b * np.outer(np.sin(u), np.sin(v))
+    Z = c * np.outer(np.ones_like(u), np.cos(v))
+
+    XX = np.zeros((N,N))
+    YY = np.zeros((N,N))
+    ZZ = np.zeros((N,N))
+    for k in range(N) :
+        for j in range(N) :
+            point = np.zeros((3,1))
+            point[0] = X[k,j]
+            point[1] = Y[k,j]
+            point[2] = Z[k,j]
+
+            P = V@point
+            XX[k,j] = P[0] + C[0]
+            YY[k,j] = P[1] + C[1]
+            ZZ[k,j] = P[2] + C[2]
+    ax.plot_surface(XX,YY,ZZ,alpha=0.8,color=color)
+
+
+def data_for_cylinder_along_z(center_x,center_y,radius1,radius2,height_z):
+    z = np.linspace(0, height_z, 2)
+    theta = np.linspace(0, 2*np.pi, 20)
+    theta_grid, z_grid=np.meshgrid(theta, z)
+    x_grid = radius1*np.cos(theta_grid) + center_x
+    y_grid = radius2*np.sin(theta_grid) + center_y
+    return x_grid,y_grid,z_grid
+
+
+
+
+
+
 def plot_state_input(t,x,u,xi,xf,N,delT,alpha,plt,flag_step=False) :
     fS = 15
     # plt.figure(idx_plot,figsize=(10,15))
@@ -96,16 +146,16 @@ def plot_traj_set(x,u,c_list,H_list,Q,xi=None,xf=None,Qi=None,Qf=None,plt=plt,fl
     # if xf is not None :
     #     plt.plot(xf[0],xf[1],"o",label='goal')
     if flag_label == True :
-        plt.plot(1e3,1e3,'--',color='tab:orange',label="nominal")
+        plt.plot(1e3,1e3,'--',color='tab:orange',label="nominal trajectory")
         plt.plot(1e3,1e3,'o',markersize=15,color='tab:blue',label="funnel") 
-        plt.plot(1e3,1e3,'o',markersize=15,color='tab:green',label="initial and final ellipsoid") 
+        # plt.plot(1e3,1e3,'o',markersize=15,color='tab:green',label="initial and final ellipsoid") 
         # plt.plot(1e3,1e3,'o',markersize=15,color='tab:green',label="final") 
-        plt.plot(1e3,1e3,'o',markersize=15,alpha=0.5,color='tab:red',label="obstacles") 
+        plt.plot(1e3,1e3,'o',markersize=15,alpha=0.5,color='tab:red',label="obstacle") 
 
     plt.gca().set_aspect('equal', adjustable='box')
     plt.axis([-1.0, 6.0, -1.0, 6.0])
-    plt.xlabel('$r_x$ (m)', fontsize = fS)
-    plt.ylabel('$r_y$ (m)', fontsize = fS)
+    # plt.xlabel('$r_x$ (m)', fontsize = fS)
+    # plt.ylabel('$r_y$ (m)', fontsize = fS)
     if flag_label == True :
         plt.legend(fontsize=fS)
     ticks_font = "Times New Roman"

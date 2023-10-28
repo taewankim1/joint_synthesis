@@ -11,24 +11,20 @@ def print_np(x):
 
 from cost.cost import OptimalcontrolCost
 
-class unicycle(OptimalcontrolCost):
-    def __init__(self,name,ix,iu,N,weight_factor_omega=1):
+class freeflyer(OptimalcontrolCost):
+    def __init__(self,name,ix,iu,N):
         super().__init__(name,ix,iu,N)
-        self.ix = 3
-        self.iu = 2
+        self.ix = ix
+        self.iu = iu
         self.N = N
 
-        self.S = 0*np.identity(ix)
-        # self.R = 1 * np.identity(iu)
-        self.R = np.diag([1,1*weight_factor_omega])
-
-    def bc_final(self,x_cvx,xf):
-        h = []
-        h.append(x_cvx == xf)
-        return h
+    # def bc_final(self,xcvx,xf):
+    #     h = []
+    #     h.append(xcvx == xf)
+    #     return h
 
     def estimate_cost_cvx(self,x,u,idx=None):
         # dimension
-        cost_total = cvx.quad_form(x, self.S) + cvx.quad_form(u,self.R)
+        cost_total = cvx.quad_form(u,np.eye(self.iu))
         
         return cost_total

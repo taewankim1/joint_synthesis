@@ -17,9 +17,10 @@ import IPython
 from Scaling import TrajectoryScaling
 
 class funlopt :
-    def __init__(self,ix,iu,iq,ip,iw,N,S,R,myScaling,
+    def __init__(self,name,ix,iu,iq,ip,iw,N,myScaling,
             alpha=0.99,lambda_mu=0.1, 
-            w_tr=1,flag_nonlinearity=True) :
+            w_Q=1,w_K=1,w_tr=1,ignore_dpp=False,flag_nonlinearity=True) :
+        self.name = name
         self.ix = ix
         self.iu = iu
         self.iq = iq
@@ -27,17 +28,23 @@ class funlopt :
         self.iw = iw
         self.N = N
         self.small = 1e-12
+        self.w_Q = w_Q
+        self.w_K = w_K
         self.w_tr = w_tr
         self.flag_nl = flag_nonlinearity 
 
+        self.ignore_dpp = ignore_dpp
         self.alpha = alpha
         self.lambda_mu = lambda_mu
         assert self.alpha > self.lambda_mu
         self.Sx,self.iSx,self.sx,self.Su,self.iSu,self.su = myScaling.get_scaling()
+        self.snu_p = myScaling.snu_p
 
-    def cvx_initialize(self,Qini,Qf) :
+    def cvx_initialize(self,Qini,Qf,num_const_state=0,num_const_input=0) :
         ix,iu,N = self.ix,self.iu,self.N
         iq,ip,iw = self.iq,self.ip,self.iw
+        self.num_const_state = num_const_state
+        self.num_const_input = num_const_input
 
 
         # fixed parameter
@@ -69,9 +76,9 @@ class funlopt :
         Qbar_unscaled = []
         Ybar_unscaled = []
         for i in range(N+1) :
-            Qbar_unscaled.append(cvx.Variable((ix,ix), PSD=True))
+            Qbar_unscaled.append(cvx.Parameter((ix,ix)))
             if i < N :
-                Ybar_unscaled.append(cvx.Variable((iu,ix)))
+                Ybar_unscaled.append(cvx.Parameter((iu,ix)))
         gamma_inv_squared = []
         for i in range(N) :
             gamma_inv_squared.append(cvx.Parameter(pos=True))
@@ -91,17 +98,57 @@ class funlopt :
                 alpha,lambda_mu,
                 constraints)
 
-        for i in range(N+1) :
-            Qi = self.Sx@Qcvx[i]@self.Sx
-            constraints.append(Qi << nu_Q[i]*np.eye(ix))
-            constraints.append(Qi >> np.eye(ix)*self.small) # PD
+        if 'unicycle' in self.name :
+            for i in range(N+1) :
+                Qi = self.Sx@Qcvx[i]@self.Sx
+                constraints.append(Qi << nu_Q[i]*np.eye(ix))
+                constraints.append(Qi >> np.eye(ix)*self.small) # PD
 
-        for i in range(N) :
-            Yi = self.Su@Ycvx[i]@self.Sx
-            Qi = self.Sx@Qcvx[i]@self.Sx
-            tmp1 = cvx.hstack((nu_K[i]*np.eye(iu),Yi))
-            tmp2 = cvx.hstack((Yi.T,Qi))
-            constraints.append( cvx.vstack((tmp1,tmp2)) >> 0)
+            for i in range(N) :
+                Yi = self.Su@Ycvx[i]@self.Sx
+                Qi = self.Sx@Qcvx[i]@self.Sx
+                tmp1 = cvx.hstack((nu_K[i]*np.eye(iu),Yi))
+                tmp2 = cvx.hstack((Yi.T,Qi))
+                constraints.append( cvx.vstack((tmp1,tmp2)) >> 0)
+            if num_const_state != 0 :
+                const_state = []
+                for idx in range(num_const_state)  :
+                    const = {}
+                    const['(b-ax)^2'] = cvx.Parameter((N,1))
+                    const['a'] = cvx.Parameter((N,ix))
+                    for i in range(N) :
+                        Qi = self.Sx@Qcvx[i]@self.Sx 
+                        tmp = const['(b-ax)^2'][i:i+1]
+                        tmp1 = cvx.hstack((tmp,const['a'][i:i+1]@Qi))
+                        tmp2 = cvx.hstack((Qi.T@const['a'][i:i+1].T,Qi))
+                        constraints.append( cvx.vstack((tmp1,tmp2)) >> 0)
+                    const_state.append(const)
+            if num_const_input != 0 :
+                const_input = []
+                for idx in range(num_const_input) :
+                    const = {}
+                    const['(b-au)^2'] = cvx.Parameter((N,1))
+                    const['a'] = cvx.Parameter((N,iu))
+                    for i in range(N) :
+                        Qi = self.Sx@Qcvx[i]@self.Sx # Q_i
+                        Yi = self.Su@Ycvx[i]@self.Sx
+                        tmp = const['(b-au)^2'][i:i+1]
+                        tmp1 = cvx.hstack((tmp,const['a'][i:i+1]@Yi))
+                        tmp2 = cvx.hstack((Yi.T@const['a'][i:i+1].T,Qi))
+                        constraints.append( cvx.vstack((tmp1,tmp2)) >> 0)
+                    const_input.append(const)
+        elif 'freeflyer' in self.name :
+            for i in range(N+1) :
+                Qi = Qcvx[i]
+                constraints.append(Qi << nu_Q[i]*np.eye(ix))
+                constraints.append(Qi >> np.eye(ix)*self.small) # PD
+
+            for i in range(N) :
+                Yi = Ycvx[i]
+                Qi = Qcvx[i]
+                tmp1 = cvx.hstack((nu_K[i]*np.eye(iu),Yi))
+                tmp2 = cvx.hstack((Yi.T,Qi))
+                constraints.append( cvx.vstack((tmp1,tmp2)) >> 0)
 
         # initial condition
         Qi = self.Sx@Qcvx[0]@self.Sx    
@@ -117,7 +164,9 @@ class funlopt :
                 + cvx.norm(Ycvx[i]-Ybar_unscaled[i],'fro')**2)
         objective_tr.append(cvx.norm(Qcvx[-1]-Qbar_unscaled[-1],'fro')**2)
         
-        l = cvx.sum(nu_Q) + cvx.sum(nu_K)
+        l_Q = cvx.sum(nu_Q)
+        l_K = cvx.sum(nu_K)
+        l = self.w_Q * l_Q + self.w_K * l_K
         l_tr = cvx.sum(objective_tr)
         l_all = l + self.w_tr*l_tr
 
@@ -143,6 +192,10 @@ class funlopt :
         self.cvx_params['Qbar_unscaled'] = Qbar_unscaled
         self.cvx_params['Ybar_unscaled'] = Ybar_unscaled
         self.cvx_params['gamma_inv_squared'] = gamma_inv_squared
+        if num_const_state != 0 :
+            self.cvx_params['const_state'] = const_state
+        if num_const_input != 0 :
+            self.cvx_params['const_input'] = const_input
         # save cost
         self.cvx_cost = {}
         self.cvx_cost['l_all'] = l_all
@@ -183,6 +236,8 @@ class funlopt :
             Qi = self.Sx@Qcvx[i]@self.Sx
             Yi = self.Su@Ycvx[i]@self.Sx
             Qi_next = self.Sx@Qcvx[i+1]@self.Sx
+            nu_pi = self.snu_p*nu_p[i]
+            # nu_pi = nu_p[i]
             
             LMI11 = alpha*Qi - lambda_mu * Qi
             LMI21 = np.zeros((ip,ix))
@@ -203,7 +258,7 @@ class funlopt :
             LMI54 = np.zeros((iq,ix))
 
             # LMI55 = self.nu_p * (1/gamma[i]**2) * np.eye(iq)
-            LMI55 = nu_p[i] * gamma_inv_squared[i] * np.eye(iq)
+            LMI55 = nu_pi * gamma_inv_squared[i] * np.eye(iq)
 
             row1 = cvx.hstack((LMI11,LMI21.T,LMI31.T,LMI41.T,LMI51.T))
             row2 = cvx.hstack((LMI21,LMI22,LMI32.T,LMI42.T,LMI52.T))
@@ -215,7 +270,7 @@ class funlopt :
             constraints.append(LMI  >> 0)
 
 
-    def solve(self,gamma,Qhat,Yhat,A,B,C,D,E,F,G) :
+    def solve(self,gamma,Qhat,Yhat,A,B,C,D,E,F,G,const_state=None,const_input=None) :
         ix,iu,N = self.ix,self.iu,self.N
         iq,ip,iw = self.iq,self.ip,self.iw
 
@@ -231,8 +286,20 @@ class funlopt :
         self.cvx_params['D'].value = D
         self.cvx_params['E'].value = E
         self.cvx_params['G'].value = G
+        if self.num_const_state!= 0 and const_state != None :
+            for idx in range(self.num_const_state) :
+                self.cvx_params['const_state'][idx]['a'].value = const_state[idx]['a']
+                self.cvx_params['const_state'][idx]['(b-ax)^2'].value = const_state[idx]['(b-ax)^2'][:,np.newaxis]
 
-        self.prob.solve(solver=cvx.MOSEK)
+        if self.num_const_input!= 0 and const_input != None :
+            for idx in range(self.num_const_input) :
+                self.cvx_params['const_input'][idx]['a'].value = const_input[idx]['a']
+                self.cvx_params['const_input'][idx]['(b-au)^2'].value = const_input[idx]['(b-au)^2'][:,np.newaxis]
+
+        # self.prob.solve(solver=cvx.MOSEK,ignore_dpp=self.ignore_dpp)
+        # self.prob.solve(solver=cvx.MOSEK,ignore_dpp=self.ignore_dpp,verbose=True)
+        self.prob.solve(solver=cvx.CLARABEL,ignore_dpp=self.ignore_dpp)
+        # self.prob.solve(solver=cvx.CLARABEL,ignore_dpp=self.ignore_dpp,verbose=True)
 
         Qnew = []
         Ynew = []
@@ -248,6 +315,8 @@ class funlopt :
         Knew = np.array(Knew)
         Qnew = np.array(Qnew)
         Ynew = np.array(Ynew)
+        # print("max nu_p",np.max(nu_p))
+        # print("cost",self.cvx_cost['l_all'].value)
 
         return Qnew,Knew,Ynew,self.prob.status,self.cvx_cost['l'].value
 

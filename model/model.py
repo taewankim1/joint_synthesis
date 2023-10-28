@@ -16,6 +16,32 @@ def print_np(x):
     print ("Shape is %s" % (x.shape,))
     # print ("Values are: \n%s" % (x))
 
+class ODE_solution(object) :
+    def __init__(self) :
+        pass
+    def setter(self,y,t) :
+        self.y = y
+        self.t = t
+
+def RK4(odefun, tspan, y0,args,N_RK=10) :
+    t = np.linspace(tspan[0],tspan[-1],N_RK)
+    h = t[1] - t[0]
+    iy = len(y0)
+    y_sol = np.zeros((N_RK,iy))
+    y_sol[0] = y0
+    for idx in range(0,N_RK-1) :
+        tk = t[idx]
+        yk = y_sol[idx]
+        k1 = odefun(tk,yk,*args)
+        k2 = odefun(tk + h/2,yk + h/2*k1,*args)
+        k3 = odefun(tk + h/2,yk + h/2*k2,*args)
+        k4 = odefun(tk+h,yk+h*k3,*args)
+        y_sol[idx+1] = yk + h/6 * (k1 + 2*k2 + 2*k3 + k4)
+
+    sol = ODE_solution()
+    sol.setter(y_sol.T,t)
+    return sol
+
 
 class OptimalcontrolModel(object) :
     def __init__(self,name,ix,iu,linearization) :
@@ -46,7 +72,7 @@ class OptimalcontrolModel(object) :
             N = np.size(x,axis = 0)
         
         # numerical difference
-        h = pow(2,-17) / 2 
+        h = pow(2,-18) # 18
         eps_x = np.identity(ix)
         eps_u = np.identity(iu)
 
@@ -86,7 +112,8 @@ class OptimalcontrolModel(object) :
         fx = f_diff[:,:,0:ix]
         fu = f_diff[:,:,ix:ix+iu]
         
-        return np.squeeze(fx), np.squeeze(fu)
+        # return np.squeeze(fx), np.squeeze(fu)
+        return fx,fu
 
     def diff_numeric(self,x,u) :
         # state & input size
@@ -186,7 +213,7 @@ class OptimalcontrolModel(object) :
         V0 = np.array([np.hstack((x[i],A0,B0,s0,z0)) for i in range(N)]).transpose()
         V0_repeat = V0.flatten(order='F')
 
-        sol = solve_ivp(dvdt,(0,delT),V0_repeat,args=(u,N),method='RK45',rtol=1e-6,atol=1e-10)
+        sol = solve_ivp(dvdt,(0,delT),V0_repeat,args=(u,N),method='RK45',rtol=1e-6,atol=1e-9)
         # sol = solve_ivp(dvdt,(0,delT),V0_repeat,args=(u,N),method='RK45',max_step=1e-2,rtol=1e-6,atol=1e-10)
         # sol = solve_ivp(dvdt,(0,delT),V0_repeat,args=(u,N),method='RK45',max_step=1e-2)
         # IPython.embed()
