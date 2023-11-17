@@ -1,3 +1,5 @@
 notebooks/** linguist-vendored
 # notebooks/
 images
+data
+graveyard

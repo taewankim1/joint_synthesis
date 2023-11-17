@@ -68,6 +68,83 @@ class freeflyer(OptimalcontrolConstraints):
 
         return h
 
-        
+    def get_const_state(self,xnom,unom) :
+        c_list,H_list = self.c,self.H
+
+        const_state = []
+        M = np.zeros((2,self.ix))
+        M[0,0] = 1
+        M[1,0] = 1
+        N = len(xnom) 
+        # # obstacle avoidance
+        # for c,H in zip(c_list,H_list) :
+        #     tmp_zip = {}
+        #     a = np.zeros((N,self.ix,1))
+        #     bb = np.zeros(N)
+        #     for i in range(N) :
+        #         x = xnom[i]
+        #         deriv  = - M.T@H.T@H@(M@x-c) / np.linalg.norm(H@(M@x-c))
+        #         s = 1 - np.linalg.norm(H@(M@x-c))
+        #         a[i,:,0] = deriv
+        #         b = -s + deriv@x
+        #         bb[i] = (b - a[i,:,0].T@x) ** 2
+        #     tmp_zip['a'] = np.squeeze(a)
+        #     tmp_zip['(b-ax)^2'] = np.squeeze(bb)
+        #     const_state.append(tmp_zip)
+
+        # state constraints
+        tmp_zip = {}
+        a = np.zeros((N,self.ix,1))
+        for i in range(N) :
+            x = xnom[i]
+            A = np.vstack((np.zeros((3,3)),np.eye(3),np.zeros((6,3)))).T
+            a[i,:,0] = x[:,np.newaxis].T@A.T@A / np.linalg.norm(A@x[:,np.newaxis])
+        b = self.vmax * np.ones(N)
+        c = (b - np.squeeze(np.transpose(a,(0,2,1))@xnom[:,:,np.newaxis])) ** 2
+        tmp_zip['a'] = np.squeeze(a)
+        tmp_zip['(b-ax)^2'] = c
+        const_state.append(tmp_zip)
+
+        tmp_zip = {}
+        a = np.zeros((N,self.ix,1))
+        for i in range(N) :
+            x = xnom[i]
+            A = np.vstack((np.zeros((9,3)),np.eye(3))).T
+            a[i,:,0] = x[:,np.newaxis].T@A.T@A / np.linalg.norm(A@x[:,np.newaxis])
+        b = self.omega_max * np.ones(N)
+        c = (b - np.squeeze(np.transpose(a,(0,2,1))@xnom[:,:,np.newaxis])) ** 2
+        tmp_zip['a'] = np.squeeze(a)
+        tmp_zip['(b-ax)^2'] = c
+        const_state.append(tmp_zip)
+        return const_state
+
+
+    def get_const_input(self,xnom,unom) :
+        N = len(unom)
+        const_input = []
+        a = np.zeros((N,self.iu,1))
+        for i in range(N) :
+            u = unom[i]
+            A = np.vstack((np.eye(3),np.zeros((3,3)))).T
+            a[i,:,0] = u[:,np.newaxis].T@A.T@A / np.linalg.norm(A@u[:,np.newaxis])
+        b = self.Tmax * np.ones(N)
+        c = (b - np.squeeze(np.transpose(a,(0,2,1))@unom[:,:,np.newaxis])) ** 2
+        tmp_zip = {}
+        tmp_zip['a'] = np.squeeze(a)
+        tmp_zip['(b-au)^2'] = c
+        const_input.append(tmp_zip)
+
+        a = np.zeros((N,self.iu,1))
+        for i in range(N) :
+            u = unom[i]
+            A = np.vstack((np.zeros((3,3)),np.eye(3))).T
+            a[i,:,0] = u[:,np.newaxis].T@A.T@A / np.linalg.norm(A@u[:,np.newaxis])
+        b = self.Mmax * np.ones(N)
+        c = (b - np.squeeze(np.transpose(a,(0,2,1))@unom[:,:,np.newaxis])) ** 2
+        tmp_zip = {}
+        tmp_zip['a'] = np.squeeze(a)
+        tmp_zip['(b-au)^2'] = c
+        const_input.append(tmp_zip)
+        return const_input   
 
 

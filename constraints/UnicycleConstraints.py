@@ -72,7 +72,6 @@ class UnicycleConstraints(OptimalcontrolConstraints):
         c_list,H_list = self.c,self.H
 
         const_state = []
-        c,H = c_list[0],H_list[0] # temporary
         M = np.array([[1,0,0],[0,1,0]])
         N = len(xnom) 
         for c,H in zip(c_list,H_list) :

@@ -9,11 +9,11 @@ def print_np(x):
 #     print ("Values are: \n%s" % (x))
 from utils.utils_alg import get_radius_angle
 
-def plot_ellipse_2D(ax,Q,C,color='tab:blue') :
+def plot_ellipse_2D(ax,Q,C,color='tab:blue',fill=True,alpha=0.5) :
     radius_f,angle_f = get_radius_angle([Q[0:2,0:2]])
     for radius,angle in zip(radius_f,angle_f) :
         ell = Ellipse((C[0],C[1]),radius[0]*2,radius[1]*2,angle=np.rad2deg(angle),
-        color=color,alpha=0.5,fill=True)
+        color=color,alpha=alpha,fill=fill)
         ax.add_patch(ell)
 def plot_ellipse_3D(ax,Q,C,color='tab:blue') :
     N = 20
@@ -44,21 +44,16 @@ def plot_ellipse_3D(ax,Q,C,color='tab:blue') :
             XX[k,j] = P[0] + C[0]
             YY[k,j] = P[1] + C[1]
             ZZ[k,j] = P[2] + C[2]
-    ax.plot_surface(XX,YY,ZZ,alpha=0.8,color=color)
+    ax.plot_surface(XX,YY,ZZ,alpha=1.0,color=color)
 
 
 def data_for_cylinder_along_z(center_x,center_y,radius1,radius2,height_z):
     z = np.linspace(0, height_z, 2)
-    theta = np.linspace(0, 2*np.pi, 20)
+    theta = np.linspace(0, 2*np.pi, 50)
     theta_grid, z_grid=np.meshgrid(theta, z)
     x_grid = radius1*np.cos(theta_grid) + center_x
     y_grid = radius2*np.sin(theta_grid) + center_y
     return x_grid,y_grid,z_grid
-
-
-
-
-
 
 def plot_state_input(t,x,u,xi,xf,N,delT,alpha,plt,flag_step=False) :
     fS = 15
@@ -198,11 +193,11 @@ def plot_comparison(x,x_l,c_list,H_list,Q,Q_l,xi=None,xf=None,Qi=None,Qf=None,pl
         ell = Ellipse((x_[0],x_[1]),radius[0]*2,radius[1]*2,angle=np.rad2deg(angle),color='tab:brown',alpha=1.0,fill=False)
         ax.add_patch(ell)
     if flag_label == True :
-        plt.plot(1e3,1e3,'--',color='tab:orange',label="nominal")
+        plt.plot(1e3,1e3,'--',color='tab:orange',label="trajectory")
         plt.plot(1e3,1e3,'o',markersize=15,color='tab:blue',label="funnel") 
         plt.plot(1e3,1e3,'o',markersize=15,color='tab:green',label="initial and final") 
         plt.plot(1e3,1e3,'o',markersize=15,alpha=0.5,color='tab:red',label="obstacles") 
-        plt.plot(1e3,1e3,'-.',color='tab:brown',label="approx nominal")
+        plt.plot(1e3,1e3,'-.',color='tab:brown',label="approx trajectory")
         plt.plot(1e3,1e3,'o',markersize=15,fillstyle='none',linewidth=4,color='tab:brown',label="approx funnel") 
         # ell = Ellipse((1e3,1e3),radius[0]*2,radius[1]*2,angle=np.rad2deg(angle),color='tab:brown',alpha=1.0,fill=False,label='linear funnel')
         # ax.add_patch(ell)

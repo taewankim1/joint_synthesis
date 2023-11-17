@@ -200,7 +200,7 @@ class unicycle1(OptimalcontrolModel):
         V0 = np.array([np.hstack((x[i],A0,B0,F0,s0,z0)) for i in range(N)]).transpose()
         V0_repeat = V0.flatten(order='F')
 
-        sol = solve_ivp(dvdt,(0,delT),V0_repeat,args=(u[0:N],u[1:],N),rtol=1e-6,atol=1e-10)
+        sol = solve_ivp(dvdt,(0,delT),V0_repeat,args=(u[0:N],w,N),rtol=1e-6,atol=1e-10)
         # sol = solve_ivp(dvdt,(0,delT),V0_repeat,args=(u[0:N],u[1:],N))
         # IPython.embed()
         idx_state = slice(0,ix)
@@ -221,7 +221,6 @@ class unicycle1(OptimalcontrolModel):
         z = np.matmul(A,sol[:,idx_z].reshape((-1,ix,1))).squeeze()
 
         return A,B,F,s,z,x_prop
-
 
 class unicycle2(unicycle1):
     def __init__(self,name,linearzation):
@@ -297,5 +296,88 @@ class unicycle2(unicycle1):
         fw[:,1,1] = 0.0
         fw[:,2,0] = 0.0
         fw[:,2,1] = 0.1
+        
+        return np.squeeze(fw)
+
+class unicycle3(unicycle1):
+    def __init__(self,name,linearzation):
+        super().__init__(name,linearzation)
+        # re-define
+        self.iw = 2
+        self.iq = 3
+        self.ip = 2
+        self.C = np.array([[0,0,1],[0,0,0],[0,0,0]])
+        self.D = np.array([[0,0],[1,0],[0,0]])
+        self.E = np.array([[1,0],[0,1],[0,0]])
+        self.G = np.array([[0,0],[0,0],[1,0]])
+
+    # def forward
+    # def diff 
+    def forward_uncertain(self,x,u,w,idx=None):
+        xdim = np.ndim(x)
+        udim = np.ndim(u)
+        wdim = np.ndim(w)
+        assert xdim == udim
+        assert wdim == udim
+        if xdim == 1: # 1 step state & input
+            N = 1
+            x = np.expand_dims(x,axis=0)
+            u = np.expand_dims(u,axis=0)
+            w = np.expand_dims(w,axis=0)
+        else :
+            N = np.size(x,axis = 0)
+     
+        # state & input
+        x1 = x[:,0]
+        x2 = x[:,1]
+        x3 = x[:,2]
+        
+        v = u[:,0]
+        omega = u[:,1]
+        
+        w1 = w[:,0]
+        w2 = w[:,1]
+
+        # output
+        f = np.zeros_like(x)
+        # f[:,0] = (v + 0.1*w1) * np.cos(x3)
+        # f[:,1] = (v + 0.1*w1) * np.sin(x3)
+        # f[:,2] = omega + 0.1*w2
+        f[:,0] = v * np.cos(x3 + 0.03*w1)
+        f[:,1] = v * np.sin(x3 + 0.03*w1)
+        f[:,2] = omega + 0.05*w2
+
+        return f
+
+    def diff_F(self,x,u,w):
+
+        # dimension
+        ndim = np.ndim(x)
+        if ndim == 1: # 1 step state & input
+            N = 1
+            x = np.expand_dims(x,axis=0)
+            u = np.expand_dims(u,axis=0)
+            w = np.expand_dims(w,axis=0)
+        else :
+            N = np.size(x,axis = 0)
+        
+        # state & input
+        x1 = x[:,0]
+        x2 = x[:,1]
+        x3 = x[:,2]
+        
+        uv = u[:,0]
+        uw = u[:,1]    
+
+        w1 = w[:,0]
+        w2 = w[:,1]
+        
+        fw = np.zeros((N,self.ix,2))
+        fw[:,0,0] = -0.03*uv*np.sin(x3 + 0.03*w1)
+        fw[:,0,1] = 0.0
+        fw[:,1,0] = 0.03*np.sin(x3 + 0.03*w1)
+        fw[:,1,1] = 0.0
+        fw[:,2,0] = 0.0
+        fw[:,2,1] = 0.05
         
         return np.squeeze(fw)

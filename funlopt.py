@@ -19,7 +19,7 @@ from Scaling import TrajectoryScaling
 class funlopt :
     def __init__(self,name,ix,iu,iq,ip,iw,N,myScaling,
             alpha=0.99,lambda_mu=0.1, 
-            w_Q=1,w_K=1,w_tr=1,ignore_dpp=False,flag_nonlinearity=True) :
+            w_Q=1,w_K=1,w_tr=1,ignore_dpp=False,flag_nonlinearity=True,solver="CLARABEL") :
         self.name = name
         self.ix = ix
         self.iu = iu
@@ -39,6 +39,7 @@ class funlopt :
         assert self.alpha > self.lambda_mu
         self.Sx,self.iSx,self.sx,self.Su,self.iSu,self.su = myScaling.get_scaling()
         self.snu_p = myScaling.snu_p
+        self.solver = solver
 
     def cvx_initialize(self,Qini,Qf,num_const_state=0,num_const_input=0) :
         ix,iu,N = self.ix,self.iu,self.N
@@ -110,33 +111,6 @@ class funlopt :
                 tmp1 = cvx.hstack((nu_K[i]*np.eye(iu),Yi))
                 tmp2 = cvx.hstack((Yi.T,Qi))
                 constraints.append( cvx.vstack((tmp1,tmp2)) >> 0)
-            if num_const_state != 0 :
-                const_state = []
-                for idx in range(num_const_state)  :
-                    const = {}
-                    const['(b-ax)^2'] = cvx.Parameter((N,1))
-                    const['a'] = cvx.Parameter((N,ix))
-                    for i in range(N) :
-                        Qi = self.Sx@Qcvx[i]@self.Sx 
-                        tmp = const['(b-ax)^2'][i:i+1]
-                        tmp1 = cvx.hstack((tmp,const['a'][i:i+1]@Qi))
-                        tmp2 = cvx.hstack((Qi.T@const['a'][i:i+1].T,Qi))
-                        constraints.append( cvx.vstack((tmp1,tmp2)) >> 0)
-                    const_state.append(const)
-            if num_const_input != 0 :
-                const_input = []
-                for idx in range(num_const_input) :
-                    const = {}
-                    const['(b-au)^2'] = cvx.Parameter((N,1))
-                    const['a'] = cvx.Parameter((N,iu))
-                    for i in range(N) :
-                        Qi = self.Sx@Qcvx[i]@self.Sx # Q_i
-                        Yi = self.Su@Ycvx[i]@self.Sx
-                        tmp = const['(b-au)^2'][i:i+1]
-                        tmp1 = cvx.hstack((tmp,const['a'][i:i+1]@Yi))
-                        tmp2 = cvx.hstack((Yi.T@const['a'][i:i+1].T,Qi))
-                        constraints.append( cvx.vstack((tmp1,tmp2)) >> 0)
-                    const_input.append(const)
         elif 'freeflyer' in self.name :
             for i in range(N+1) :
                 Qi = Qcvx[i]
@@ -149,6 +123,33 @@ class funlopt :
                 tmp1 = cvx.hstack((nu_K[i]*np.eye(iu),Yi))
                 tmp2 = cvx.hstack((Yi.T,Qi))
                 constraints.append( cvx.vstack((tmp1,tmp2)) >> 0)
+        if num_const_state != 0 :
+            const_state = []
+            for idx in range(num_const_state)  :
+                const = {}
+                const['(b-ax)^2'] = cvx.Parameter((N,1))
+                const['a'] = cvx.Parameter((N,ix))
+                for i in range(N) :
+                    Qi = self.Sx@Qcvx[i]@self.Sx 
+                    tmp = const['(b-ax)^2'][i:i+1]
+                    tmp1 = cvx.hstack((tmp,const['a'][i:i+1]@Qi))
+                    tmp2 = cvx.hstack((Qi.T@const['a'][i:i+1].T,Qi))
+                    constraints.append( cvx.vstack((tmp1,tmp2)) >> 0)
+                const_state.append(const)
+        if num_const_input != 0 :
+            const_input = []
+            for idx in range(num_const_input) :
+                const = {}
+                const['(b-au)^2'] = cvx.Parameter((N,1))
+                const['a'] = cvx.Parameter((N,iu))
+                for i in range(N) :
+                    Qi = self.Sx@Qcvx[i]@self.Sx # Q_i
+                    Yi = self.Su@Ycvx[i]@self.Sx
+                    tmp = const['(b-au)^2'][i:i+1]
+                    tmp1 = cvx.hstack((tmp,const['a'][i:i+1]@Yi))
+                    tmp2 = cvx.hstack((Yi.T@const['a'][i:i+1].T,Qi))
+                    constraints.append( cvx.vstack((tmp1,tmp2)) >> 0)
+                const_input.append(const)
 
         # initial condition
         Qi = self.Sx@Qcvx[0]@self.Sx    
@@ -298,7 +299,10 @@ class funlopt :
 
         # self.prob.solve(solver=cvx.MOSEK,ignore_dpp=self.ignore_dpp)
         # self.prob.solve(solver=cvx.MOSEK,ignore_dpp=self.ignore_dpp,verbose=True)
-        self.prob.solve(solver=cvx.CLARABEL,ignore_dpp=self.ignore_dpp)
+        if self.solver == "MOSEK" : 
+            self.prob.solve(solver=cvx.MOSEK,ignore_dpp=self.ignore_dpp)
+        elif self.solver == "CLARABEL" :
+            self.prob.solve(solver=cvx.CLARABEL,ignore_dpp=self.ignore_dpp)
         # self.prob.solve(solver=cvx.CLARABEL,ignore_dpp=self.ignore_dpp,verbose=True)
 
         Qnew = []

@@ -245,11 +245,38 @@ class Lipschitz :
 
         return gamma
 
+class ODE_solution(object) :
+    def __init__(self) :
+        pass
+    def setter(self,y,t) :
+        self.y = y
+        self.t = t
+
+def RK4(odefun, tspan, y0,args,N_RK=10) :
+    t = np.linspace(tspan[0],tspan[-1],N_RK)
+    h = t[1] - t[0]
+    iy = len(y0)
+    y_sol = np.zeros((N_RK,iy))
+    y_sol[0] = y0
+    for idx in range(0,N_RK-1) :
+        tk = t[idx]
+        yk = y_sol[idx]
+        k1 = odefun(tk,yk,*args)
+        k2 = odefun(tk + h/2,yk + h/2*k1,*args)
+        k3 = odefun(tk + h/2,yk + h/2*k2,*args)
+        k4 = odefun(tk+h,yk+h*k3,*args)
+        y_sol[idx+1] = yk + h/6 * (k1 + 2*k2 + 2*k3 + k4)
+
+    sol = ODE_solution()
+    sol.setter(y_sol.T,t)
+    return sol
+
 def propagate_model(model,x0,u,w,delT) :
     def dfdt(t,x,u,w) :
         return np.squeeze(model.forward_uncertain(x,u,w))
 
     sol = solve_ivp(dfdt,(0,delT),x0,args=(u,w),method='RK45')
+    # sol = RK4(dfdt,(0,delT),x0,args=(u,w),N_RK=5)
     xnext = sol.y[:,-1]
     return xnext
 

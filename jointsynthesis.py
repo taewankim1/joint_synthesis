@@ -54,7 +54,7 @@ class jointsynthesis:
             
             # discretization
             tic = time.time()
-            A,B,F,s,z,_ = self.model.diff_discrete_zoh_noise(xnew,unew,np.zeros((N,iw)),delT,tf) 
+            A,B,F,s,z,_ = self.model.diff_discrete_zoh_noise(xnew[:N],unew[:N],np.zeros((N,iw)),delT,tf) 
             sub_history['t_derivs'] = time.time() - tic
             
             # STEP 2 : Lipschitz constant estimation
@@ -62,7 +62,6 @@ class jointsynthesis:
             self.lip_estimator.initialize(xnew,unew,xfwd,Qhat,Khat,A,B,C,D,E,F,G,self.model)
             gammanew = self.lip_estimator.update_lipschitz_norm(self.model,delT)
             sub_history['t_Lipschitz'] = time.time() - tic
-        #     print("mean of gamma",np.mean(gammanew,0),"max of gamma",np.max(gammanew,0),"var of gamma",np.var(gammanew,0))
 
             # STEP 3 : Funnel update via SDP
             tic = time.time()
